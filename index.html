@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Creator & Quiz Game</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#0f172a;
+    color:white;
+    padding:20px;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+}
+
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:15px;
+    margin-bottom:20px;
+    box-shadow:0 0 15px rgba(0,0,0,.3);
+}
+
+h1,h2{
+    text-align:center;
+    margin-bottom:15px;
+}
+
+input,select{
+    width:100%;
+    padding:12px;
+    margin:8px 0;
+    border:none;
+    border-radius:8px;
+    background:#334155;
+    color:white;
+}
+
+button{
+    padding:12px 16px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
+    margin-top:10px;
+}
+
+.primary{
+    background:#2563eb;
+    color:white;
+}
+
+.success{
+    background:#16a34a;
+    color:white;
+}
+
+.danger{
+    background:#dc2626;
+    color:white;
+}
+
+.option{
+    display:block;
+    width:100%;
+    text-align:left;
+    background:#334155;
+    color:white;
+    margin:8px 0;
+}
+
+.option:hover{
+    background:#475569;
+}
+
+.correct{
+    background:#16a34a !important;
+}
+
+.wrong{
+    background:#dc2626 !important;
+}
+
+.hidden{
+    display:none;
+}
+
+#score{
+    margin-top:15px;
+    text-align:center;
+    font-size:20px;
+}
+
+#question{
+    font-size:22px;
+    margin-bottom:15px;
+}
+
+#progress{
+    text-align:center;
+    margin-bottom:10px;
+    opacity:.8;
+}
+
+textarea{
+    width:100%;
+    height:120px;
+    background:#334155;
+    color:white;
+    border:none;
+    border-radius:8px;
+    padding:10px;
+    margin-top:10px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="card">
+        <h1>🎮 Quiz Creator & Quiz Game</h1>
+    </div>
+
+    <div class="card">
+        <h2>Create Question</h2>
+
+        <input id="questionInput" placeholder="Enter Question">
+
+        <input class="answerInput" placeholder="Answer 1">
+        <input class="answerInput" placeholder="Answer 2">
+        <input class="answerInput" placeholder="Answer 3">
+        <input class="answerInput" placeholder="Answer 4">
+
+        <label>Correct Answer</label>
+        <select id="correctAnswer">
+            <option value="0">Answer 1</option>
+            <option value="1">Answer 2</option>
+            <option value="2">Answer 3</option>
+            <option value="3">Answer 4</option>
+        </select>
+
+        <button class="success" onclick="addQuestion()">
+            Add Question
+        </button>
+
+        <button class="primary" onclick="startQuiz()">
+            Start Quiz
+        </button>
+
+        <button class="danger" onclick="clearQuiz()">
+            Delete All Questions
+        </button>
+    </div>
+
+    <div class="card">
+        <h2>Saved Questions</h2>
+        <div id="questionCount">0 Questions Saved</div>
+    </div>
+
+    <div class="card hidden" id="quizSection">
+
+        <div id="progress"></div>
+
+        <div id="question"></div>
+
+        <div id="answers"></div>
+
+        <button id="nextBtn" class="primary hidden">
+            Next Question
+        </button>
+
+        <div id="score"></div>
+
+    </div>
+
+</div>
+
+<script>
+
+let quiz = JSON.parse(localStorage.getItem("quizData")) || [];
+
+updateCount();
+
+const questionEl = document.getElementById("question");
+const answersEl = document.getElementById("answers");
+const nextBtn = document.getElementById("nextBtn");
+const scoreEl = document.getElementById("score");
+const progressEl = document.getElementById("progress");
+
+let currentQuestion = 0;
+let score = 0;
+
+function updateCount(){
+    document.getElementById("questionCount").innerText =
+        quiz.length + " Questions Saved";
+}
+
+function saveQuiz(){
+    localStorage.setItem(
+        "quizData",
+        JSON.stringify(quiz)
+    );
+}
+
+function addQuestion(){
+
+    const question =
+        document.getElementById("questionInput").value.trim();
+
+    const inputs =
+        document.querySelectorAll(".answerInput");
+
+    const correctIndex =
+        Number(document.getElementById("correctAnswer").value);
+
+    if(question === ""){
+        alert("Enter a question");
+        return;
+    }
+
+    let answers = [];
+
+    inputs.forEach((input,index)=>{
+
+        if(input.value.trim() !== ""){
+
+            answers.push({
+                text: input.value.trim(),
+                correct: index === correctIndex
+            });
+
+        }
+
+    });
+
+    if(answers.length < 2){
+        alert("At least 2 answers required");
+        return;
+    }
+
+    quiz.push({
+        question: question,
+        answers: answers
+    });
+
+    saveQuiz();
+    updateCount();
+
+    document.getElementById("questionInput").value = "";
+
+    inputs.forEach(input=>{
+        input.value = "";
+    });
+
+    alert("Question Added");
+}
+
+function clearQuiz(){
+
+    if(confirm("Delete all questions?")){
+
+        quiz = [];
+
+        saveQuiz();
+        updateCount();
+
+        alert("All questions deleted");
+    }
+}
+
+function startQuiz(){
+
+    if(quiz.length === 0){
+        alert("Add some questions first");
+        return;
+    }
+
+    document
+        .getElementById("quizSection")
+        .classList.remove("hidden");
+
+    currentQuestion = 0;
+    score = 0;
+
+    showQuestion();
+}
+
+function showQuestion(){
+
+    resetState();
+
+    const q = quiz[currentQuestion];
+
+    progressEl.innerText =
+        "Question " +
+        (currentQuestion + 1) +
+        " / " +
+        quiz.length;
+
+    questionEl.innerText = q.question;
+
+    let shuffled =
+        [...q.answers].sort(() => Math.random() - 0.5);
+
+    shuffled.forEach(answer=>{
+
+        const btn =
+            document.createElement("button");
+
+        btn.classList.add("option");
+
+        btn.innerText = answer.text;
+
+        if(answer.correct){
+            btn.dataset.correct = true;
+        }
+
+        btn.onclick = selectAnswer;
+
+        answersEl.appendChild(btn);
+    });
+}
+
+function resetState(){
+
+    nextBtn.classList.add("hidden");
+
+    answersEl.innerHTML = "";
+
+    scoreEl.innerHTML = "";
+}
+
+function selectAnswer(e){
+
+    const selected = e.target;
+
+    const correct =
+        selected.dataset.correct === "true";
+
+    if(correct){
+
+        score++;
+
+        selected.classList.add("correct");
+
+    }else{
+
+        selected.classList.add("wrong");
+    }
+
+    Array.from(answersEl.children)
+    .forEach(button=>{
+
+        if(button.dataset.correct === "true"){
+            button.classList.add("correct");
+        }
+
+        button.disabled = true;
+    });
+
+    nextBtn.classList.remove("hidden");
+}
+
+nextBtn.onclick = ()=>{
+
+    currentQuestion++;
+
+    if(currentQuestion < quiz.length){
+
+        showQuestion();
+
+    }else{
+
+        showResult();
+    }
+};
+
+function showResult(){
+
+    progressEl.innerHTML = "";
+
+    questionEl.innerHTML =
+        "🏆 Quiz Finished";
+
+    answersEl.innerHTML = "";
+
+    scoreEl.innerHTML =
+        "Final Score: " +
+        score +
+        " / " +
+        quiz.length;
+
+    nextBtn.innerText = "Play Again";
+    nextBtn.classList.remove("hidden");
+
+    nextBtn.onclick = ()=>{
+
+        nextBtn.innerText = "Next Question";
+
+        nextBtn.onclick = ()=>{
+
+            currentQuestion++;
+
+            if(currentQuestion < quiz.length){
+                showQuestion();
+            }else{
+                showResult();
+            }
+        };
+
+        startQuiz();
+    };
+}
+
+</script>
+
+</body>
+</html>
